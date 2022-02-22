@@ -43,11 +43,12 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "    Speed: <span id=\"speed\"> </span> %\n"
                            "    Angle: <span id=\"angle\"> </span>\n"
                            "  </p>\n"
-                           "  <canvas id=\"canvas\" name=\"game\"></canvas>\n"
+                           "\n"
+                           "  <canvas id=\"canvas\" name=\"game\"></canvas> \n"
+                           "\n"
                            "  <script>\n"
                            "    let Socket = new WebSocket('ws://' + window.location.hostname + ':81/');\n"
                            "    function send(x, y) {\n"
-                           "      console.log(x, y);\n"
                            "      data = {\n"
                            "        'x': x,\n"
                            "        'y': y\n"
@@ -142,13 +143,7 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "\n"
                            "    function stopDrawing() {\n"
                            "      paint = false;\n"
-                           "      ctx.clearRect(0, 0, canvas.width, canvas.height);\n"
-                           "      background();\n"
-                           "      joystick(width / 2, height / 3);\n"
-                           "      document.getElementById(\"x_coordinate\").innerText = 0;\n"
-                           "      document.getElementById(\"y_coordinate\").innerText = 0;\n"
                            "      document.getElementById(\"speed\").innerText = 0;\n"
-                           "      document.getElementById(\"angle\").innerText = 0;\n"
                            "    }\n"
                            "\n"
                            "    function Draw(event) {\n"
@@ -173,14 +168,14 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "        }\n"
                            "        getPosition(event);\n"
                            "        var speed = Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);\n"
-                           "        var x_relative = Math.round(x - x_orig);\n"
-                           "        var y_relative = Math.round(y - y_orig);\n"
+                           "        var y_relative = Math.round(x - x_orig);\n"
+                           "        var x_relative = Math.round(y - y_orig);\n"
                            "        document.getElementById(\"x_coordinate\").innerText = x_relative;\n"
                            "        document.getElementById(\"y_coordinate\").innerText = y_relative;\n"
                            "        document.getElementById(\"speed\").innerText = speed;\n"
                            "        document.getElementById(\"angle\").innerText = angle_in_degrees;\n"
                            "        if(x_relative % 2 == 0 && y_relative % 2 == 0){\n"
-                           "          send(500 + (x_relative+200)*5, 500 + (-y_relative+200)*5);\n"
+                           "          send(500 + (x_relative+200)*5, 500 + (y_relative+200)*5);\n"
                            "        }\n"
                            "      }\n"
                            "    }\n"
@@ -211,10 +206,18 @@ void setup() {
   servo_y.attach(servo_y_pin);
 
   Serial.begin(115200);
-  WiFi.softAP(ssid, password);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
 
-  Serial.print("IP address: ");
-  Serial.println(WiFi.softAPIP());
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
 
   server.on("/", main_page);
 

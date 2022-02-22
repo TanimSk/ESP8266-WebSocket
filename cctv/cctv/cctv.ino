@@ -12,11 +12,11 @@ Servo servo_y;
 
 StaticJsonDocument<48> doc;
 
-#define ssid "Optimus"
-#define password "123op123"
+#define ssid "OPTIMUS-Access-Point"
+#define password "123opop123"
 
 #define servo_x_pin D5
-#define servo_y_pin D7 
+#define servo_y_pin D7
 
 String str_payload = "";
 

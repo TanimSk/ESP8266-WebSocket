@@ -15,10 +15,15 @@ StaticJsonDocument<48> doc;
 #define ssid "OPTIMUS-Access-Point"
 #define password "123opop123"
 
-#define servo_x_pin D5
-#define servo_y_pin D7
+#define servo_x_pin D7
+#define servo_y_pin D5
 
 String str_payload = "";
+bool toggle_rotation = false;
+unsigned long now_time = 0;
+
+int servo_x_val = 0;
+bool flag_x = true;
 
 const char *html_content = "<!DOCTYPE html>\n"
                            "<html lang=\"en\">\n"
@@ -31,18 +36,42 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "    Mousebot\n"
                            "  </title>\n"
                            "  <meta name=\"viewport\" content=\"user-scalable=no\">\n"
+                           "\n"
+                           "  <style>\n"
+                           "    .btn{\n"
+                           "      height: 3rem;\n"
+                           "      width: 7rem;\n"
+                           "      background-color: rgb(123, 212, 123);\n"
+                           "      border: none;\n"
+                           "      outline: none;\n"
+                           "      transition: .3s;\n"
+                           "      border-radius: 10px;\n"
+                           "      color: yellow;\n"
+                           "    }\n"
+                           "    .btn:hover{\n"
+                           "      background-color: rgb(93, 158, 93);\n"
+                           "    }\n"
+                           "    \n"
+                           "  </style>\n"
+                           "\n"
                            "</head>\n"
                            "\n"
                            "<body style=\"position: fixed; font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif ;\n"
                            "color:rgb(128, 128, 128);\n"
                            "font-size: xx-large;\">\n"
-                           "  <br><br><br>\n"
+                           "  \n"
                            "  <p style=\"text-align: center;\">\n"
                            "    X: <span id=\"x_coordinate\"> </span>\n"
                            "    Y: <span id=\"y_coordinate\"> </span>\n"
                            "    Speed: <span id=\"speed\"> </span> %\n"
                            "    Angle: <span id=\"angle\"> </span>\n"
                            "  </p>\n"
+                           "\n"
+                           "  <div style=\"text-align: center;\">\n"
+                           "    <button class=\"btn\" onclick=\"toggle_rotation(this)\">\n"
+                           "      <b>Turn Rotation ON</b>\n"
+                           "    </button>\n"
+                           "  </div>\n"
                            "\n"
                            "  <canvas id=\"canvas\" name=\"game\"></canvas> \n"
                            "\n"
@@ -89,6 +118,23 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "      ctx.canvas.height = height;\n"
                            "      background();\n"
                            "      joystick(width / 2, height / 3);\n"
+                           "    }\n"
+                           "\n"
+                           "    let btn_toggle = true;\n"
+                           "\n"
+                           "    function toggle_rotation(obj){\n"
+                           "      if(btn_toggle){\n"
+                           "        obj.innerHTML = \"<b>Turn Rotation OFF</b>\";\n"
+                           "      }\n"
+                           "      else{\n"
+                           "        obj.innerHTML = \"<b>Turn Rotation ON</b>\";\n"
+                           "      }\n"
+                           "\n"
+                           "      var xmlHttp = new XMLHttpRequest();\n"
+                           "      xmlHttp.open(\"GET\", \"/rotate\", true);\n"
+                           "      xmlHttp.send(null);\n"
+                           "\n"
+                           "      btn_toggle = !btn_toggle;\n"
                            "    }\n"
                            "\n"
                            "    function background() {\n"
@@ -168,8 +214,8 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "        }\n"
                            "        getPosition(event);\n"
                            "        var speed = Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);\n"
-                           "        var y_relative = Math.round(x - x_orig);\n"
-                           "        var x_relative = Math.round(y - y_orig);\n"
+                           "        var x_relative = Math.round(x - x_orig);\n"
+                           "        var y_relative = Math.round(y - y_orig);\n"
                            "        document.getElementById(\"x_coordinate\").innerText = x_relative;\n"
                            "        document.getElementById(\"y_coordinate\").innerText = y_relative;\n"
                            "        document.getElementById(\"speed\").innerText = speed;\n"
@@ -183,17 +229,20 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "</body>\n"
                            "</html><br>\n";
 
-
 void main_page() {
   server.send(200, "text/html", html_content);
 }
 
+void auto_rotate() {
+  toggle_rotation = ! toggle_rotation;
+  server.send(200, "text/plain", "");
+}
+
+
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
-  if (type == WStype_TEXT) {
+  if (type == WStype_TEXT && !toggle_rotation) {
     str_payload = String((char *)payload);
     deserializeJson(doc, str_payload);
-    Serial.println("x: " + String(doc["x"]));
-    Serial.println("y: " + String(doc["y"]));
     servo_x.writeMicroseconds(doc["x"]);
     servo_y.writeMicroseconds(doc["y"]);
   }
@@ -220,6 +269,7 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   server.on("/", main_page);
+  server.on("/rotate", auto_rotate);
 
   server.begin();
   webSocket.begin();
@@ -228,7 +278,52 @@ void setup() {
   Serial.println("Server listening");
 }
 
+int servo_x_rotated = 0;
+
+void rotate_servo_x() {
+  if (servo_x_val >= 180) {
+    servo_x_rotated++;
+    servo_x_val = 180;
+    flag_x = false;
+  }
+  else if (servo_x_val <= 0) {
+    servo_x_rotated++;
+    servo_x_val = 0;
+    flag_x = true;
+  }
+  if (flag_x) {
+    servo_x_val += 5;
+  }
+  else {
+    servo_x_val -= 5;
+  }
+  servo_x.write(servo_x_val);
+}
+
+
+bool servo_y_stat = true;
+
+void manage_servo_rotation(){
+  if(servo_x_rotated == 2){
+     if(servo_y_stat) servo_y.writeMicroseconds(1000);
+     else servo_y.writeMicroseconds(2000);
+     servo_y_stat = !servo_y_stat;
+     servo_x_rotated = 0;
+  }
+  else{
+    rotate_servo_x();
+  }
+}
+
 void loop() {
   webSocket.loop();
   server.handleClient();
+
+  if (toggle_rotation) {
+    if ((millis() - now_time) > 300) {
+      manage_servo_rotation();
+      now_time = millis();
+    }
+  }
+
 }

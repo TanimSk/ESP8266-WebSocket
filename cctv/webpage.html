@@ -33,16 +33,9 @@
 color:rgb(128, 128, 128);
 font-size: xx-large;">
   
-  <p style="text-align: center;">
-    X: <span id="x_coordinate"> </span>
-    Y: <span id="y_coordinate"> </span>
-    Speed: <span id="speed"> </span> %
-    Angle: <span id="angle"> </span>
-  </p>
-
   <div style="text-align: center;">
-    <button class="btn" onclick="toggle_rotation(this)">
-      <b>Turn Rotation ON</b>
+    <button class="btn" onclick="toggle_rotation()">
+      <b>Rotation</b>
     </button>
   </div>
 
@@ -74,11 +67,6 @@ font-size: xx-large;">
       document.addEventListener('touchcancel', stopDrawing);
       document.addEventListener('touchmove', Draw);
       window.addEventListener('resize', resize);
-
-      document.getElementById("x_coordinate").innerText = 0;
-      document.getElementById("y_coordinate").innerText = 0;
-      document.getElementById("speed").innerText = 0;
-      document.getElementById("angle").innerText = 0;
     });
 
     var width, height, radius, x_orig, y_orig;
@@ -95,14 +83,7 @@ font-size: xx-large;">
 
     let btn_toggle = true;
 
-    function toggle_rotation(obj){
-      if(btn_toggle){
-        obj.innerHTML = "<b>Turn Rotation OFF</b>";
-      }
-      else{
-        obj.innerHTML = "<b>Turn Rotation ON</b>";
-      }
-
+    function toggle_rotation(){
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.open("GET", "/rotate", true);
       xmlHttp.send(null);
@@ -162,7 +143,6 @@ font-size: xx-large;">
 
     function stopDrawing() {
       paint = false;
-      document.getElementById("speed").innerText = 0;
     }
 
     function Draw(event) {
@@ -189,12 +169,8 @@ font-size: xx-large;">
         var speed = Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);
         var y_relative = Math.round(x - x_orig);
         var x_relative = Math.round(y - y_orig);
-        document.getElementById("x_coordinate").innerText = x_relative;
-        document.getElementById("y_coordinate").innerText = y_relative;
-        document.getElementById("speed").innerText = speed;
-        document.getElementById("angle").innerText = angle_in_degrees;
         if(x_relative % 2 == 0 && y_relative % 2 == 0){
-          send(500 + (x_relative+200)*5, 500 + (y_relative+200)*5);
+          send(500 + (y_relative+200)*5, 500 + (x_relative+200)*5);
         }
       }
     }

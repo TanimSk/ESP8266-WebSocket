@@ -60,16 +60,9 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "color:rgb(128, 128, 128);\n"
                            "font-size: xx-large;\">\n"
                            "  \n"
-                           "  <p style=\"text-align: center;\">\n"
-                           "    X: <span id=\"x_coordinate\"> </span>\n"
-                           "    Y: <span id=\"y_coordinate\"> </span>\n"
-                           "    Speed: <span id=\"speed\"> </span> %\n"
-                           "    Angle: <span id=\"angle\"> </span>\n"
-                           "  </p>\n"
-                           "\n"
                            "  <div style=\"text-align: center;\">\n"
-                           "    <button class=\"btn\" onclick=\"toggle_rotation(this)\">\n"
-                           "      <b>Turn Rotation ON</b>\n"
+                           "    <button class=\"btn\" onclick=\"toggle_rotation()\">\n"
+                           "      <b>Rotation</b>\n"
                            "    </button>\n"
                            "  </div>\n"
                            "\n"
@@ -101,11 +94,6 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "      document.addEventListener('touchcancel', stopDrawing);\n"
                            "      document.addEventListener('touchmove', Draw);\n"
                            "      window.addEventListener('resize', resize);\n"
-                           "\n"
-                           "      document.getElementById(\"x_coordinate\").innerText = 0;\n"
-                           "      document.getElementById(\"y_coordinate\").innerText = 0;\n"
-                           "      document.getElementById(\"speed\").innerText = 0;\n"
-                           "      document.getElementById(\"angle\").innerText = 0;\n"
                            "    });\n"
                            "\n"
                            "    var width, height, radius, x_orig, y_orig;\n"
@@ -122,14 +110,7 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "\n"
                            "    let btn_toggle = true;\n"
                            "\n"
-                           "    function toggle_rotation(obj){\n"
-                           "      if(btn_toggle){\n"
-                           "        obj.innerHTML = \"<b>Turn Rotation OFF</b>\";\n"
-                           "      }\n"
-                           "      else{\n"
-                           "        obj.innerHTML = \"<b>Turn Rotation ON</b>\";\n"
-                           "      }\n"
-                           "\n"
+                           "    function toggle_rotation(){\n"
                            "      var xmlHttp = new XMLHttpRequest();\n"
                            "      xmlHttp.open(\"GET\", \"/rotate\", true);\n"
                            "      xmlHttp.send(null);\n"
@@ -189,7 +170,6 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "\n"
                            "    function stopDrawing() {\n"
                            "      paint = false;\n"
-                           "      document.getElementById(\"speed\").innerText = 0;\n"
                            "    }\n"
                            "\n"
                            "    function Draw(event) {\n"
@@ -214,14 +194,10 @@ const char *html_content = "<!DOCTYPE html>\n"
                            "        }\n"
                            "        getPosition(event);\n"
                            "        var speed = Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);\n"
-                           "        var x_relative = Math.round(x - x_orig);\n"
-                           "        var y_relative = Math.round(y - y_orig);\n"
-                           "        document.getElementById(\"x_coordinate\").innerText = x_relative;\n"
-                           "        document.getElementById(\"y_coordinate\").innerText = y_relative;\n"
-                           "        document.getElementById(\"speed\").innerText = speed;\n"
-                           "        document.getElementById(\"angle\").innerText = angle_in_degrees;\n"
+                           "        var y_relative = Math.round(x - x_orig);\n"
+                           "        var x_relative = Math.round(y - y_orig);\n"
                            "        if(x_relative % 2 == 0 && y_relative % 2 == 0){\n"
-                           "          send(500 + (x_relative+200)*5, 500 + (y_relative+200)*5);\n"
+                           "          send(500 + (y_relative+200)*5, 500 + (x_relative+200)*5);\n"
                            "        }\n"
                            "      }\n"
                            "    }\n"
@@ -240,10 +216,10 @@ void auto_rotate() {
 
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
-  if (type == WStype_TEXT && !toggle_rotation) {
+  if (type == WStype_TEXT) {
     str_payload = String((char *)payload);
     deserializeJson(doc, str_payload);
-    servo_x.writeMicroseconds(doc["x"]);
+    if(!toggle_rotation) servo_x.writeMicroseconds(doc["x"]);
     servo_y.writeMicroseconds(doc["y"]);
   }
 }
@@ -253,6 +229,11 @@ void setup() {
 
   servo_x.attach(servo_x_pin);
   servo_y.attach(servo_y_pin);
+
+  servo_x.write(90);
+  servo_y.write(90);
+
+  delay(300);
 
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
@@ -278,16 +259,13 @@ void setup() {
   Serial.println("Server listening");
 }
 
-int servo_x_rotated = 0;
 
 void rotate_servo_x() {
   if (servo_x_val >= 180) {
-    servo_x_rotated++;
     servo_x_val = 180;
     flag_x = false;
   }
   else if (servo_x_val <= 0) {
-    servo_x_rotated++;
     servo_x_val = 0;
     flag_x = true;
   }
@@ -301,27 +279,13 @@ void rotate_servo_x() {
 }
 
 
-bool servo_y_stat = true;
-
-void manage_servo_rotation(){
-  if(servo_x_rotated == 2){
-     if(servo_y_stat) servo_y.writeMicroseconds(1000);
-     else servo_y.writeMicroseconds(2000);
-     servo_y_stat = !servo_y_stat;
-     servo_x_rotated = 0;
-  }
-  else{
-    rotate_servo_x();
-  }
-}
-
 void loop() {
   webSocket.loop();
   server.handleClient();
 
   if (toggle_rotation) {
-    if ((millis() - now_time) > 300) {
-      manage_servo_rotation();
+    if ((millis() - now_time) > 350) {
+      rotate_servo_x();
       now_time = millis();
     }
   }
